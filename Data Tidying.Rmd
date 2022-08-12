@@ -1,0 +1,473 @@
+---
+title: "Data Tidying"
+author: "Eloise Newman"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+Data tidying of raw data for "Hot and Bothered" masters research. R version is `r R.Version()$version.string`. Data wrangling involves mainly using the `dplyr` package from `tidyverse` by Hadley Wickham, Romain François, Lionel Henry and Kirill Müller (2022).
+
+
+# Three raw data sets
+
+Three data sets imported to tibbles:
+
+1.  **flymass** - dry fly mass in micrograms (mg) using the Mettler Toldero microbalance
+2.  **meta_data** - contains treatment for each file number, time, emergence, starvation date etc.
+3.  **behaviours** - cursed output from BORIS via JWatcher
+
+```{r include=TRUE, warning = FALSE, message=FALSE}
+# fly mass dataset
+flymass <- read_csv("data/flymass.csv")
+
+# fly video dataset (temp, time, eclosion time)
+meta_data <- read_csv("data/Fly Video List.csv", n_max = 38, col_select = ...1:PANstarvTime)
+
+# fly behaviours dataset (from Boris or Jwatcher)
+behaviours <- read_csv("data/summary.csv", skip = 9)
+```
+
+# Data tidying and wrangling
+
+## Fly mass
+
+None
+
+## Fly video meta-data (treatment, time etc)
+
+```{r Tidying up the Fly video meta data set, include=TRUE}
+# rename columns
+meta_data2 <- meta_data %>% 
+  dplyr::select(-Arena_Start, -Arena_End) %>% 
+  rename(date_experiment = `...1`, )
+
+## Need to make Temp a ordered factor with levels
+temp_levels <- c("L", "M", "H")
+meta_data2$Temp <- factor(meta_data2$Temp, levels =  temp_levels)
+```
+
+Further potential changes not done:
+
+1.  convert egg collection (ec) and emergence (em) date to days
+2.  calculate days from emergence to fight, emergence to starv, s
+3.  recalculate file_end_time, and change column to time
+
+## Fly behaviour data set from BORIS/Jwatcher
+
+Renaming the columns into something recognisable
+
+```{r Renaming columns for fly behaviour, include=TRUE}
+beh_columns <- colnames(behaviours)
+
+  # renaming Prefixes
+beh_columns <- str_replace(beh_columns, "StateAllInt ", "Int") 
+beh_columns <- str_replace_all(beh_columns, "StateAllDur ", "Dur")
+
+  # Rewnaming Behavioural codes for behaviours
+beh_columns <- beh_columns %>% 
+      # Prefixes
+          str_replace("cd.res file", "Fly_Number")  %>%
+          str_replace_all("StateAllInt ", "Int")  %>%
+          str_replace_all("StateAllDur ", "Dur") %>%
+      # PAL
+          str_replace_all("-0-\\!", "WingThreatPAL") %>%
+          str_replace_all("-0-\\@", "LungePAL")  %>%
+          str_replace_all("-0-A", "MovingPAL")   %>%
+          str_replace_all("-0-C", "LegShovePAL")   %>%
+          str_replace_all("-0-D", "BodyShovePAL")   %>%
+          str_replace_all("-0-E", "HeadbuttPAL")   %>% 
+          str_replace_all("-0-S", "StopMovePAL")   %>%
+          str_replace_all("-0-R", "RetreatPAL")   %>%
+          str_replace_all("-0-Q", "FeedPAL")   %>%
+          str_replace_all("-0-W", "StopFeedPAL")   %>%
+          str_replace_all("-0-X", "StopFencePAL")   %>%
+          str_replace_all("-0-Z", "FencingPAL") %>% 
+      # PAN   
+          str_replace_all("-0-1", "WingThreatPAN")  %>%
+          str_replace_all("-0-2", "LungePAN")  %>%
+          str_replace_all("-0-a", "MovingPAN")   %>%
+          str_replace_all("-0-c", "LegShovePAN")   %>%
+          str_replace_all("-0-d", "BodyShovePAN")   %>%
+          str_replace_all("-0-e", "HeadbuttPAN")   %>%
+          str_replace_all("-0-s", "StopMovePAN")   %>%
+          str_replace_all("-0-r", "RetreatPAN")   %>%
+          str_replace_all("-0-q", "FeedPAN")   %>%
+          str_replace_all("-0-w", "StopFeedPAN")   %>%
+          str_replace_all("-0-x", "StopFencePAN")   %>%
+          str_replace_all("-0-z", "FencingPAN")
+
+# Reassign to behaviours data set
+colnames(behaviours) <- beh_columns
+```
+
+Finally need to remove the suffix from fly number
+
+```{r Removing suffix from fly number in fly behaviour, include=TRUE}
+#Remove "_No focal subject.cd.res" from fly number
+behaviours <- behaviours %>%
+  separate(Fly_Number, c("Fly_Number", "redunt"), sep ="_No " ) %>% 
+  dplyr::select(-redunt)
+```
+
+### Behaviours and codes - Prefixes
+
+[***ref***]{.underline}***: CHAPTER 10 Basic Analysis: Interpreting Your Output - JWatcher Manual***
+
+-   ***StateAllInt-\> Int** refers to "State Analysis, All, Interval" statistics. The statistics are calculated for the intervals between states, regardless of whether they begin and end completely with- in a time bin.*
+
+-   ***StateAllDur** -\> **Dur** refers to "State Analysis, All, Duration" statistics. The statistics are calculated for the durations of states. All durations of a behavioral state are included in the calculations, regardless of whether they begin and end completely within a time bin, and regardless of whether they occur adjacent to the onset or termination of the out- of-sight key. In this case, the out-of-sight key affects the proportion of time-in-sight statistic only.\**
+
+| Code | Meaning                           |
+|------|-----------------------------------|
+| N    | Occurrence                        |
+| TT   | Total Time (milliseconds)         |
+| X    | Average (milliseconds)            |
+| SD   | Standard deviation (milliseconds) |
+| Prop | Proportion of time                |
+
+### Behaviours selected
+
+StateAllDur N-0 \# the number of bouts of that behaviours (both PAN & PAL)
+
+-   wing threat
+
+-   lunge
+
+-   leg shove
+
+-   body shove
+
+-   headbutt
+
+-   retreat
+
+-   feed
+
+-   moving
+
+-   fencing
+
+StateAllDur TT-0 \# the total duration of that behaviour recorded in that observation.
+
+-   TT fencing duration
+
+-   TT moving duration
+
+-   TT feeding
+
+StateAllDur X-0
+
+-   average fencing duration
+
+-   average moving duration
+
+-   average feeding
+
+### Selecting columns
+
+and converting time from milliseconds to seconds
+
+```{r Selecting the columns I am interested in, include=TRUE}
+# Selecting the columns I am interested in
+selectbehaviour <- behaviours %>%
+  dplyr::select(Fly_Number, 
+         # number of bouts
+         `DurNBodyShovePAL`, `DurNBodyShovePAN`,
+         `DurNFeedPAL`, `DurNFeedPAN`,
+         `DurNHeadbuttPAL`, `DurNHeadbuttPAN`,
+         `DurNLegShovePAL`, `DurNLegShovePAN`,
+         `DurNLungePAL`, `DurNLungePAN`,
+         `DurNWingThreatPAL`, `DurNWingThreatPAN`,
+         `DurNRetreatPAL`, `DurNRetreatPAN`,
+         `DurNMovingPAL`, `DurNMovingPAN`,
+         `DurNFencingPAL`, `DurNFencingPAN`,
+         # total duration
+         `DurTTFeedPAL`, `DurTTFeedPAN`,
+         `DurTTMovingPAL`, `DurTTMovingPAN`,
+         `DurTTFencingPAL`, `DurTTFencingPAN`,
+         # average duration
+         `DurXFeedPAL`, `DurXFeedPAN`,
+         `DurXMovingPAL`, `DurXMovingPAN`,
+         `DurXFencingPAL`, `DurXFencingPAN`,
+          ) %>% 
+  mutate( #PAL total
+      DurTTFencingPAL = DurTTFencingPAL/1000,
+      DurTTMovingPAL = DurTTMovingPAL/1000,
+      DurTTFeedPAL = DurTTFeedPAL/1000,
+         # PAN TOTAL
+      DurTTFencingPAN = DurTTFencingPAN/1000,
+      DurTTMovingPAN = DurTTMovingPAN/1000,
+      DurTTFeedPAN = DurTTFeedPAN/1000,
+          # PAL average
+      DurXFencingPAL = DurXFencingPAL/1000,
+      DurXMovingPAL = DurXMovingPAL/1000,
+      DurXFeedPAL = DurXFeedPAL/1000,
+         # PAN Average
+      DurXFencingPAN = DurXFencingPAN/1000,
+      DurXMovingPAN = DurXMovingPAN/1000,
+      DurXFeedPAN = DurXFeedPAN/1000)
+```
+
+Using `readr` package from `tidyverse` to export as a tidied data file.
+
+```{r exporting tidied fly behaviour data to csv, include=TRUE}
+write_excel_csv(selectbehaviour, "behavioural_data_tidied.csv", col_names = TRUE)
+```
+
+# Combining data sets
+
+## Behaviours and mass - `behaviour_mass`
+
+First I combine the fly mass to fly behaviour dataset by unique `Fly_Number` to a dataset called `behaviour_mass`
+
+```{r Fly fight data and fly mass data}
+# USING THE FLY NUMBER or FILE NAME, Assign fly mass to fly behaviour dataset 
+behaviour_mass <- 
+  left_join(selectbehaviour, flymass, by = "Fly_Number")
+```
+
+## Behaviour, mass and meta data - `behaviour_mass_meta`
+
+Next I assign the meta data (aka the treatment and emergence time etc) to the fly behaviour + fly mass data set (`behaviour_mass_meta`)
+
+```{r Fly meta data and mass and fight data}
+# Assigning meta data to fly fights + fly mass. Meta_data adds an NA row so removing 
+# that as well
+behaviour_mass_meta <- behaviour_mass %>% 
+  mutate(file_name = Fly_Number) %>% #generating file_name from fly number
+  separate(file_name, c("file_name", "remove"), sep = 3) %>% # to match to meta
+  dplyr::select(-remove) %>% 
+  right_join(meta_data2, by = "file_name") %>%
+  filter(!is.na(Fly_Number))
+```
+
+Therefore, in the `behaviour_mass_meta` data set, each row is one fight with behaviour, mass and metadata for PAN and PAL in one row - species are combined.
+
+## Meta data and mass - `flymass_meta`
+
+Separately I join some of the `meta_data` to the `flymass` dataset to be able to separately analyse fly mass to temperature. I also convert to long format so that each fly has their own row, and a species column is added.
+
+```{r Fly video data + fly mass data}
+# Adding fly mass + metadata togther in wide format
+flymass_meta <- flymass %>% 
+  mutate(file_name = Fly_Number) %>% #generating file_name from fly number
+  separate(file_name, c("file_name", "remove"), sep = 3) %>% #to match to meta
+  dplyr::select(-remove) %>% 
+  right_join(meta_data2, by = "file_name") %>% 
+  mutate(mass_dif = PAL_Mass_mg - PAN_Mass_mg) # mass difference between opponents
+
+    ## need to convert to long format from wide
+flymass_meta <- flymass_meta %>% 
+  pivot_longer(c(PAN_Mass_mg, PAL_Mass_mg), names_to = "Species", values_to = "Mass") %>% 
+  separate(Species, c("Species", "remove"), sep = 3) %>% 
+  dplyr::select(Fly_Number, file_name, Letter, Sex, Temp, temp_room, 
+         Species, Mass, mass_dif, -remove) %>% 
+  filter(!is.na(Mass)) %>% #converting zeros to NA to make easier to filter
+  na_if(0.000)
+```
+
+## Separating PAN and PAL behavioural data into separate rows - `pan_pal`
+
+Effectively making this in long format.
+
+```{r}
+# Separate PAN and PAL data + add a column intitled `Species`
+PAN <- behaviour_mass_meta %>% 
+  dplyr::select(Fly_Number, contains("PAN"), 
+         file_name, Temp, Sex, ECDate, EmDate, temp_room, file_start_time) %>%
+  mutate(Species = "PAN") 
+
+PAL <- behaviour_mass_meta %>% 
+  dplyr::select(Fly_Number, contains("PAL"), 
+         file_name, Temp, Sex, ECDate, EmDate, temp_room, file_start_time) %>%
+  mutate(Species = "PAL") 
+
+# combine them together - ignoring the PAL column names
+      PAL_pan_names <- PAL
+      names(PAL_pan_names) <- names(PAN)
+pan_pal <- rbind(PAL_pan_names, PAN)
+
+# Rename/remove the "PAN"
+col_names <- names(pan_pal)
+  col_names <- col_names %>% 
+    str_replace("PAN", "")
+names(pan_pal) <- col_names # reassign
+
+# Select
+pan_pal <- pan_pal %>% 
+  dplyr::select(1:16, Species) 
+
+# Re-align + connect metadata and mass as janky
+pan_pal <- 
+  left_join(pan_pal, flymass_meta, by = c("Fly_Number", "Species")) %>% 
+  mutate(pan_pal, fencing_presence = ifelse(DurTTFencing > 0, 1, 0))
+```
+
+Also get one dataset for just PAN and PAL respectively.
+
+```{r}
+# reassign species specific datasets to species
+PAN <- pan_pal %>% 
+  filter(Species == "PAN")
+PAL <- pan_pal %>% 
+  filter(Species == "PAL")
+```
+
+# Original analysis datasets
+
+## Summarising total acts of aggression - `pan_pal`
+
+```{r total aggressive acts by counting incidence + counts, message=FALSE, warning=FALSE}
+pan_pal <- pan_pal %>% 
+  rowwise() %>% #total ag acts for each row otherwise shenanigans
+  mutate(total_ag_acts = sum(`DurNBodyShove`, #total ag acts for each row
+                               `DurNHeadbutt`,
+                               `DurNLegShove`,
+                               `DurNLunge`,
+                               `DurNWingThreat`,
+                               `DurNFencing`)
+       )
+
+# Pivoting pan_pal dataset for each act = pan_pal_ag
+pan_pal_ag <- pan_pal %>% 
+  pivot_longer(c(2, 4:7, 10), names_to = "ag_act", values_to = "Count") %>% 
+ dplyr::select(Fly_Number, file_name, Letter, Sex, Temp, Species, 
+        DurTTMoving, DurTTFeed, DurTTFencing,
+         Mass, mass_dif, total_ag_acts, ag_act, Count) 
+```
+
+## Calculating winners and losers of a bout - `winners_losers_pair`
+
+Do not have a "win" count in analysis, only retreat and number of fencing bouts. Also have duration of fencing (how hard fought). Therefore retreats and number of bouts was used to calculate wins. Number of retreats is the number of loses.
+
+```{r working out the losers intial}
+winners_losers_pair <- behaviour_mass_meta %>% 
+  mutate(losesPAL = DurNRetreatPAL, # Proportion of number of personal loses
+         losesPAN = DurNRetreatPAN,
+         drawsPAL = DurNFencingPAL-DurNRetreatPAL-DurNRetreatPAN,
+         drawsPAN = DurNFencingPAN-DurNRetreatPAL-DurNRetreatPAN,  
+         winsPAL = DurNFencingPAL-drawsPAL-DurNRetreatPAL,
+         winsPAN = DurNFencingPAN-drawsPAN-DurNRetreatPAN,
+         mass_dif = PAL_Mass_mg-PAN_Mass_mg,
+         bouts = DurNFencingPAL,
+         resolved = DurNFencingPAL-drawsPAL) %>% 
+  dplyr::select(Fly_Number, Letter, Temp, Sex, temp_room, bouts,
+         PAN_Mass_mg, PAL_Mass_mg, mass_dif, 
+         DurTTFencingPAN, DurTTFencingPAL, resolved,
+         losesPAL, losesPAN, drawsPAL, drawsPAN, winsPAL, winsPAN)
+```
+
+Data wrangling so PAN and PAL are in each rows... could just start with pan_pal but oh well!
+
+```{r matching meta data with winenrs losers}
+# Separating out Pan and Pal mass
+winners_losers <- winners_losers_pair %>% 
+  separate(PAN_Mass_mg, c("PAN", "removePAN"), sep = 6) %>% #to match to meta
+  separate(PAL_Mass_mg, c("PAL", "removePAL"), sep = 6) %>% #to match to meta
+  dplyr::select(-removePAN, -removePAL) %>% 
+  pivot_longer(c(PAN, PAL), names_to ="Species", values_to = "Mass")
+
+### separate by species and calulate total bout duration
+winners_losers_PAN <- winners_losers %>%  
+  dplyr::filter(Species == "PAN") %>% 
+  dplyr::select(-losesPAL, -drawsPAL, - winsPAL, -DurTTFencingPAL) %>% 
+  dplyr::rename(loses = losesPAN, draws = drawsPAN, wins = winsPAN,
+                TTBouts = DurTTFencingPAN)
+              # rename columns with no PAN and PAL
+winners_losers_PAL <- winners_losers %>%  
+  dplyr::filter(Species == "PAL") %>% 
+  dplyr::select(-losesPAN, -drawsPAN, - winsPAN, -DurTTFencingPAN) %>% 
+  dplyr::rename(loses = losesPAL, draws = drawsPAL, wins = winsPAL,
+                TTBouts = DurTTFencingPAL)
+
+## join the two together, no by as same column names
+winners_losers <- 
+  full_join(winners_losers_PAN, winners_losers_PAL) 
+
+# bouts dataset with zero bouts
+winners_losers_bout <- winners_losers %>% 
+pivot_longer(c(loses, draws, wins), # all together
+                names_to = "outcome", values_to = "result") %>% 
+  filter(!is.na(result)) # remove NA
+
+# bouts dataset with no bouts removed
+winners_losers_bout_removed <- winners_losers_bout %>% 
+  filter(bouts > 0) # remove NA
+```
+
+# List of generated datasets
+
+This code should have generated this in the enviroment, not all needed for analysis.
+
+Original imported, untidied raw data:
+
+1.  `behaviours` - behavioural data from BORIS/JWatcher
+
+2.  `flymass` - dry fly mass in micrograms (mg)
+
+3.  `meta_data` -contains treatment for each file number, time, emergence, starvation date etc.
+
+And this code has generated:
+
+1.  `behaviour_mass_meta` - each row is one fight with behaviour, mass and metadata for PAN and PAL in one row.
+
+2.  `pan_pal` - each row for each fly, including total ag_acts and presence of fencing.
+
+    1.  `pan_pal_ag` - each row for each type of ag_act, so 6 rows for each fly.
+
+3.  `selectbehaviour` - tidied full dataset with selected behaviours.
+
+4.  `meta_data2` - tidied metadata
+
+5.  `winners_losers` - has win, loss, draw for each fly separately
+
+    1.  `winners_losers_pair` - has wins,losses, draws for each fight and species one row. aka paired
+
+    2.  `winners_losers_PAN` or `_PAL` - separated by species
+
+    3.  `winners_losers_bout` - pivots, so outcome is draw, loss, win as one column with result. Each fly has three rows.
+
+    4.  `winners_losers_bout_removed` - dataset removing fights with no bouts recorded.
+
+# Themes
+
+## Colour scheme
+
+```{r}
+masters_colours <- c("#264653", #Charcoal - colour used for PAL
+                     "#2a9d8f", #Persian Green  - win or low temp
+                     "#e9c46a", #Maize Crayola
+                     "#f4a261", #Sandy Brown - draw or medium temp
+                     "#ef626c", #Fiery Rose - loss or high temp
+                     "#B75688" # Mulberry - colour used for PAN
+                     )
+```
+
+## Theme for graphs
+
+Theme setting for graphs used in ggplot2 - just use + and theme_masters.
+
+```{r Creating theme}
+theme_masters <- theme_bw() + theme( 
+   plot.title = element_text(hjust = 0.5, size = 18),
+   text = element_text(size = 12),
+   axis.text = element_text(size = 12),
+          axis.title = element_text(size = 16),
+   legend.text = element_text(size = 12),
+        legend.background = element_rect(fill="white"),
+        legend.position = "bottom",
+    panel.grid = element_line(color = "gray94"), #grid
+    strip.background = element_blank(),
+          strip.text = element_text(size=11, face="bold")
+   )
+
+theme_set(theme_masters)
+```
