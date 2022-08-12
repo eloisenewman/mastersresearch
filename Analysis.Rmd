@@ -1,0 +1,604 @@
+---
+title: "Analysis"
+author: "Eloise Newman"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+#Stats
+library(AER) # dispersion test
+library(car) # Anova, masked ‘package:dplyr’:recode ‘package:purrr’: some
+
+# output
+library(knitr) #kable function
+```
+
+**Please run the script/file "Data Tidying" to generate all the data sets required for this analysis to run.**
+
+# Statistical analysis methodology
+
+*From thesis pages 9-11*
+
+Data wrangling, statistical analysis and figure plotting was all performed in R version 4.1.2 (RCoreTeam, 2021). Extracted behavioural coding data from BORIS, dry mass and treatment data was combined for each pair and individual fly using the 'tidyverse' packages (Wickham et al., 2019). For all analyses, a p value of \<0.05 was considered significant. Unless stated otherwise, count data was first modelled with a generalised linear model (GLM) using a Poisson distribution with a log link function. All models of proportional or count data were checked for over-dispersion using the linear formulation dispersion test from the package AER (Kleiber & Zeileis, 2008). If the data were over-dispersed, it violated the assumptions of a Poisson or Binomial distribution so a quasipoisson GLM was performed. Model outputs were analysed using the analysis of variance function from the car package (Fox & Weisberg, 2019).
+
+To assess if there was variation in aggressive behaviours between treatments, the total count of agnostic behaviours was calculated for each fly (sum of body shoves, headbutts, leg shoves, lunges, wing threats and fencing bouts - table 1). As the behavioural count data was over-dispersed (z(312) = 6.770, p \< 0.001) a quasipoisson GLM was fitted. As there was significant species difference in total aggressive counts (X2(1,312) = 10.229, p = 0.00138), the next model compared and tested if different species varied in the main type of aggressive behaviour displayed. Data was over-dispersed (z(1872) = 5.473, p \< 0.001) so a quasipoisson model was performed. Two aggressive actions drove 93.4% of agnostic behaviour counts: fencing and leg shoves. Wing threats were also significant (t(1872) = 2.149, p = 0.0317) but only 3.42% of total counts. Hence analysis focused on aggression measures of total counts of agnostic behaviours (aggressive acts), counts of leg shoves, fencing bouts, wing threats and total fencing duration as these substantially contributed to total count of agnostic behaviour.
+
+To minimise type II errors, a three-way GLM of sex, species and temperature treatment was conducted on each aggressive metric: fencing duration, counts of fencing and counts of leg shoves as shown:
+
+*aggression metric \~ species \* sex \* temperature*
+
+Due to several instances of no fencing, fencing duration was transformed into binary data of fencing presence due to zero-inflation. A binomial GLM was used to test the three-way-interaction with fencing presence. The number of fencing bouts data was over-dispersed (z(302) = 6.361, p \< 0.001) so a quasipoisson GLM was applied to test for interactive effects. As the only significant factor was a main effect of temperature, a post-hoc Tukey test was used to determine how temperature affected fencing bouts with the non-interactive terms, sex and species, as fixed effects. A similar methodological process was followed for modelling three-way interaction of leg shoves, wing threats and subsequent tests of aggressive count data. Separate models were then fitted to each of the significant factor individually, and Tukey post-hoc tests conducted to explore the significant differences further.
+
+To investigate if one species tended to win more than the other, a paired Wilcox test was used as the data was non-parametric and did not have a normal distribution. Wins were not directly recorded but were calculated using the number of retreats ("loss") and number of fencing bouts of each pair. A boxplot was used to identify which species, irrespective of temperature and sex. A binomial GLM was performed to test if temperature or sex determined if a bout could be resolved with a clear winner. The proportional data was not over-dispersed as the null deviance was approximately the same as degrees of freedom (123.13 on 126 df). As PAL was found to significantly win more fights it was subsequently focused on in a second binomial GLM to investigate if the fights won by PAL vary significantly with sex and temperature of the resolved fights.
+
+411 flies were weighted to collect mass data. These flies were from all the trials, including ones not analysed in these results. A linear model was fitted showing interactive effect between sex and species. Residual standard error was 0.0425 with r2 0.887, with F(3,389) = 1022, p \<0.001. A quasipoisson GLM (z(290) = 6.532, p \< 0.001) was used to test if mass and total acts of aggression were correlated.
+
+# Ways of calculating aggression
+
+#### Aggression
+
+Three ways of calculating aggression:
+
+1.  Total number of aggressive acts (calculated below as `total_ag_acts`)
+
+2.  Fencing Duration (`DurTTFencing`)
+
+3.  Leg shoves count (`DurNLegShove`)
+
+*"count data was first modelled with a generalised linear model (GLM) using a Poisson distribution with a log link function. All models of proportional or count data were checked for over-dispersion using the linear formulation dispersion test from the package AER (Kleiber & Zeileis, 2008). If the data were over-dispersed, it violated the assumptions of a Poisson or Binomial distribution so a quasipoisson GLM was performed.Model outputs were analysed using the analysis of variance function from the car package (Fox & Weisberg, 2019)."*
+
+# Is there variation in aggression between treatments?
+
+the **total count of agnostic behaviours** was calculated for each fly (sum of body shoves, headbutts, leg shoves, lunges, wing threats and fencing bouts - table 1).
+
+```{r do species differ in total aggressive acts?}
+glm_species_taa <- glm(total_ag_acts ~ Species, pan_pal, 
+                       family = poisson())
+summary(glm_species_taa)
+dispersiontest(glm_species_taa, trafo = 1) # overdispersed
+```
+
+As the behavioural count data was **over-dispersed** (z(312) = 6.770, p \< 0.001) a **quasipoisson GLM** was fitted.
+
+```{r}
+glm_species_taa <- glm(total_ag_acts ~ Species, pan_pal, family = quasipoisson())
+summary(glm_species_taa)
+Anova(glm_species_taa)
+```
+
+Using a quasipoisson as overdispersed, yes species are significantly different in total aggressive counts (X2 = 10.229, p = 0.001383 \*\*). On average PAL (2.1283, t=26.057 p = \<0.001) is more aggressive than PAN (est = 1.71912, t-value = -3.165, p = 0.0017).
+
+
+PAN and PAL have significantly different total count of aggressive behaviours (X2(1,312) = 10.229, p = 0.001382). PAL exhibits a greater total average count of aggressive behaviours (estimate = 2.1283, se = 0.08168) than PAN (estimate = 1.71912, se = 0.12930).
+
+
+# Do different species vary in the type of aggressive behaviours displayed?
+
+As there was significant species difference in total aggressive counts (X2(1,312) = 10.229, p = 0.00138), the next model compared and tested **if different species varied in the main type of aggressive behaviour** displayed.
+
+```{r do species differ in total aggressive acts interaction}
+glm_species_taa_int <- glm(total_ag_acts ~ Species * Sex * Temp, pan_pal, 
+                       family = poisson())
+summary(glm_species_taa_int)
+dispersiontest(glm_species_taa_int, trafo = 1) # overdispersed
+```
+
+Data was **over-dispersed** (z(1872) = 5.473, p \< 0.001) so a **quasipoisson model** was performed.
+
+```{r}
+glm_species_taa_int <- glm(total_ag_acts ~ Species * Sex * Temp, pan_pal, family = quasipoisson())
+summary(glm_species_taa_int)
+Anova(glm_species_taa_int, type = 3)
+```
+
+
+
+
+## Whats the most frequent agonistic behaviour?
+
+As total aggressive acts are significantly different between species, break it down to see what kind of agnostic behaviours vary between the species. Is there any evidence that flies express some behaviours more frequently than others? Does it vary between species?
+
+```{r}
+glm_species_ag_acts <- glm(Count ~ Species * ag_act, pan_pal_ag, 
+                           family = poisson())
+summary(glm_species_ag_acts)
+dispersiontest(glm_species_ag_acts, trafo = 1)
+```
+
+But overdispersed
+
+```{r}
+glm_species_ag_acts_qp <- glm(Count ~ Species * ag_act, pan_pal_ag, family = quasipoisson())
+
+summary(glm_species_ag_acts_qp)
+Anova(glm_species_ag_acts_qp, type = 3)
+```
+
+Two aggressive actions drove 93.4% of agnostic behaviour counts: fencing and leg shoves. Wing threats were also significant (t(1872) = 2.149, p = 0.0317) but only 3.42% of total counts. Hence analysis focused on aggression measures of total counts of agnostic behaviours (aggressive acts), counts of leg shoves, fencing bouts, wing threats and total fencing duration as these substantially contributed to total count of agnostic behaviour.
+
+
+Comparing the counts of each aggressive behaviour between species, the species did not significantly differ in counts (X2(1,1872) = 2.00, p = 0.158) but there is an interaction between species and specific aggressive behaviours (X2(5,1872) = 72.86, p < 0.001). 93.4% of these counts were fencing bouts (61.5%) and leg shoves (31.8%) (fencing, t(1872) = 7.742, p < 0.001, leg shoves, (t(1872) = 7.414, p < 0.001). This is evident in figure 4 where total aggressive acts are most strongly driven by leg shoves and fencing. Wing threats were also significantly different to body shove count (t(1872) = 2.149, p = 0.0317, figure 4) and accounted for 3.42% of total counts. Three aggressive behaviours have different frequencies, but these do not vary between the species. As a result of these findings aggression measures used are fencing duration and counts of fencing, leg shoves, and wing threats as they drive this finding.
+
+
+
+# Does temperature or sex affect the types of aggressive behaviour displayed?
+
+To minimise type II errors, a three-way GLM of sex, species and temperature treatment was conducted on each aggressive metric: fencing duration, counts of fencing and counts of leg shoves as shown:
+
+*aggression metric \~ species \* sex \* temperature*
+
+1.  check linear,
+2.  dispersion test,
+3.  then quasipossion glm,
+4.  post-hoc tukey test to determine how x affected y with non-interactive terms as fixed effects
+
+A similar methodological process was followed for modelling three-way interaction of leg shoves, wing threats and subsequent tests of aggressive count data. Separate models were then fitted to each of the significant factor individually, and Tukey post-hoc tests conducted to explore the significant differences further.
+
+## Three way interactions: Sex \* Species \* Temp
+
+### Fencing duration
+
+Due to several instances of no fencing, fencing duration was transformed into binary data of fencing presence due to zero-inflation. A binomial GLM was used to test the three-way-interaction with fencing presence.
+
+```{r fencing presence three way}
+glm_three_fp <- glm(fencing_presence ~ Species * Sex * Temp, pan_pal, family = binomial())
+summary(glm_three_fp)
+Anova(glm_three_fp, type =3)
+```
+
+Nothing was significantly different between sex, species and temperature in fencing presence. There were no interactive effects.
+
+### Fencing counts
+
+```{r}
+glm_three_fc <- glm(DurNFencing ~ Species * Sex * Temp, pan_pal, 
+                    family = poisson())
+summary(glm_three_fc)
+dispersiontest(glm_three_fc, trafo = 1) 
+```
+
+The number of fencing bouts data was over-dispersed (z(302) = 6.361, p \< 0.001) so a quasipoisson GLM was applied to test for interactive effects.
+
+```{r}
+glm_three_fc <- glm(DurNFencing ~ Species * Sex * Temp, pan_pal, 
+                    family = quasipoisson())
+summary(glm_three_fc)
+Anova(glm_three_fc, type = 3) 
+```
+
+Looking at the model, High temperature was significantly different from low temperature (est=1.911023-0.892453, t-value = -2.923, p = 0.00373) with a lower number of bouts. Medium temperature did not significantly differ from either high or low temperatures.
+
+As the only significant factor was a main effect of temperature, a post-hoc Tukey test was used to determine how temperature affected fencing bouts with the non-interactive terms, sex and species, as fixed effects.
+
+```{r}
+glm_three_fc_ph <- glm(DurNFencing ~ Temp + Sex + Species, pan_pal, family = quasipoisson()) # no interaction thus add
+summary(glht(glm_three_fc_ph, mcp(Temp = "Tukey")))
+```
+
+Post hoc test to see temperatures (add species and sex as no interaction), showed that M-L were significantly different (est = - 0.4586, z = -3.392, p = 0.00212) and H-L were sig different (est- -0.7276, z = -4.746, p \< 0.001). But that High medium difference was not significant (z = -1.655, p = 0.22141). With low having the highest number of bouts, then medium then high temperature.
+
+### Leg shove counts
+
+```{r}
+glm_three_lsc <- glm(DurNLegShove ~ Species * Sex * Temp, pan_pal, family = poisson())
+summary(glm_three_lsc)
+dispersiontest(glm_three_lsc, trafo = 1) 
+```
+
+poission overdispersed (z = 4.1692, p = 1.528e-05)
+
+```{r}
+glm_three_lsc <- glm(DurNLegShove ~ Species * Sex * Temp, pan_pal, 
+                     family = quasipoisson())
+summary(glm_three_lsc)
+Anova(glm_three_lsc, type = 3)
+```
+
+Significant difference in species over leg shove count (chisq = 13.550, p = 0.0002317 \<0.0001). PAL female low temperature mean estimate is 1.701105 +/ 0.186589 (t-value = 9.117, p \<0.00001). PAN females at low temperature have signficiantly lower leg shove count. (1.701105-1.364633 = 0.336472, t-value = -3.299, p = 0.00109). No significant interaction of sex or temperature, nor significant interactive effects with species.
+
+### Wing threats counts
+
+```{r glm wingthreat 3way poisson + dispersion test}
+glm_three_wt <- glm(DurNWingThreat ~ Species * Sex * Temp, pan_pal, 
+                    family = poisson())
+summary(glm_three_wt)
+Anova(glm_three_wt, type = 3) 
+dispersiontest(glm_three_wt, trafo = 1) 
+```
+
+```{r}
+glm_three_wt <- glm(DurNWingThreat ~ Species * Sex * Temp, pan_pal, 
+                    family = quasipoisson())
+summary(glm_three_wt)
+Anova(glm_three_wt, type = 3) 
+```
+
+```{r}
+glm_three_wt_ph <- glm(DurNFencing ~ Temp + Sex + Species, pan_pal, family = quasipoisson()) # no interaction thus add
+summary(glht(glm_three_wt_ph, mcp(Temp = "Tukey")))
+```
+
+## Overall interpretation
+Temperature was the only factor which had a significant relationship with the number of fencing bouts (X2(2,302) = 9.4993, p = 0.00866). There were no interactive effects. Increasing the temperature treatment decreased the number of fencing bouts. A post-hoc Tukey test revealed that the comparison between medium-low (z(302) = -3.392, p = 0.00188) and high-low (z(302) = -4.746, p < 0.001) temperatures were significantly different but that high-medium was not (z(302) = -1.655, p = 0.221) – figure 5. The same pattern was found when repeating analysis on models for PAN and PAL respectively (PAN: X2(2,154) = 12.766, p = 0.00169, PAL: X2(2,154) = 12.622, p = 0.00182).
+
+
+There was significant species difference in number of leg shoves (X2(1,302) = 13.550, p < 0.001) with PAL having a higher number than PAN (PAL: estimate = 1.70, se = 0.187, PAN: estimate = 0.335, se = 0.414). There was no significant relationship between temperature (X2(2,302) = 4.1390, p = 0.126) and sex (X2(2,154) = 1.0785, p = 0.299). The same species relationship with leg shoves was found when repeating the analysis in a model with species and without sex and temperature factors (X2(1,302) = 66.372, p <0.001).
+
+
+There were no significant effects of sex, species, temperature, or their interactions on whether fencing occurred or the number of wing threat incidence in a fight. There were not pursed further as an aggression metric. In addition, there were no significant sex differences with any of the aggressive measures identified.
+# Winners and Losers
+
+Wins were not directly recorded but were calculated using the number of retreats ("loss") and number of fencing bouts of each pair. Number of retreats is the number of loses.
+
+#### Will-cox pair test to as does pan or pal tend to win more than the other?
+
+To investigate if one species tended to win more than the other, a paired Wilcox test was used as the data was non-parametric and did not have a normal distribution.
+
+```{r}
+wilcox.test(winners_losers_pair$winsPAN, winners_losers_pair$winsPAL, paired = TRUE, 
+            alternative = "two.sided") #two tailed test, null h0 is same
+```
+
+They are not the same.
+
+A boxplot was used to identify which species, irrespective of temperature and sex.
+
+A binomial GLM was performed to test if temperature or sex determined if a bout could be resolved with a clear winner.
+
+```{r}
+winners_losers_pair <- winners_losers_pair %>% 
+  filter(!is.na(bouts))
+
+resolve_fights_I <- cbind(winners_losers_pair$winsPAL, # total number fights PAL
+    (winners_losers_pair$winsPAL + winners_losers_pair$winsPAN)) 
+# total number fights won overall
+#format of proportion
+
+resolved_glm_I <- glm(resolve_fights_I ~ Sex * Temp, winners_losers_pair,
+                    family = binomial()) 
+# no species in analysis as output of fights
+summary(resolved_glm_I)
+Anova(resolved_glm_I, type = 3)
+```
+
+The proportional data was not over-dispersed as the null deviance was approximately the same as degrees of freedom (123.13 on 126 df).
+
+As PAL was found to significantly win more fights it was subsequently focused on in a second binomial GLM to investigate if the fights won by PAL vary significantly with sex and temperature of the resolved fights.
+
+```{r winners losers table summary}
+table_win_loss <- winners_losers_pair %>% 
+  # group_by(Sex) %>% 
+  dplyr::summarise("total bouts" = sum(bouts),
+                   "wins overall" = sum(winsPAN + winsPAL),
+                   "loses overall" = sum(losesPAN + losesPAL),
+                   "total resolved" = sum(resolved),
+                   "total draws" = sum(drawsPAL),
+                   Panwin = sum(winsPAN),
+                   Palwin = sum(winsPAL))
+table_win_loss
+```
+
+## Does one species or sex win more bouts than other at different temperatures?
+Comparing the calculated wins of PAL and PAN revealed that there is significant difference in the outcome (V = 569.5, p < 0.001) and that PAL won 80% of all the wins (Pal wins = 168, Pan wins = 42, figure 6). 68.9% of the 675 fights recorded were draws (N = 465, figure 7). PAL won 80% (N = 168) of the resolved bouts (N = 210, figure 7) - the fights that resulted in a win or a loss. A bout was not more likely to be resolved by a particular sex (X2(1,121) = 0.75058, p = 0.386), temperature (X2(2,121) = 0.64993, p = 0.723) or an interaction of the two (X2(2,121) = 1.528, p = 0.466).
+
+Following this, out of the resolved bouts, the proportion of PAL wins did not significantly vary with sex (X2(1,88) = 0.0481, p = 0.827), temperature (X2(2,88) = 0.613, p = 0.736) or an interaction effect (X2(2,88) = 0.0880, p = 0.957). PAL is more likely to win a fight, but fight outcome is not sex-specific or temperature-dependent.
+
+# Mass
+
+*PAL were significantly larger than PAN in terms of dry body mass (F(1,389)value = 1695.21, p < 0. 001). Male and female body mass was significantly different (F(1,389) =839.75, p <0.001) and there was a significant interactive effect between sex and species (F(1,389) =150.62, p <0.001). Modelling body mass, species and sex accounted for 88.74% of the variation in body mass (r2 = 0.8874, F(3,389) =1022, p < 0.001). On average, males were significantly smaller than females. Females had a larger range in body mass compared to males – 2.4 times for PAL and 2.57 times for PAN (table 3). Mass was significantly positively correlated with total aggressive acts (X2(1,290) = 4.806, p = 0.0284). Larger individuals fought more than smaller individuals.*
+
+```{r echo=FALSE, warning = FALSE, message = FALSE}
+plot_massdistribution
+```
+
+> **TDLR**: Males and females signifcantly differ in dry mass for both species. Female mass variance is \> than male.
+
+411 flies were weighted to collect mass data. These flies were from all the trials, including ones not analysed in these results. [*A note on cleaning up missing values*]{.underline} - some flies escaped after fight or when weighing they became decapitated so I am removing them. Sometimes only have one opponent. For the sake of looking at distribution of masses I have kept them.
+
+```{r simple analysis of mass M&F and PAN vs PAL, echo=TRUE, message=FALSE, warning=FALSE}
+flymass_sum <- flymass_meta %>%
+  na_if(0.000) %>% #replace all values which are 0 with NA 
+  group_by(Species, Sex) %>% 
+  dplyr::summarise("sample size" = n(),
+                   mean = mean(Mass, na.rm = TRUE),
+            median = median(Mass, na.rm = TRUE),
+            sd = sd(Mass, na.rm = TRUE),
+            min = min(Mass, na.rm = TRUE),
+            max = max(Mass, na.rm = TRUE),
+            IQR = IQR(Mass, na.rm = TRUE)
+            )
+flymass_sum
+```
+
+Eyeballing (\~2xSD +/- mean) these numbers suggests they are significantly different between the species, but also that there might be significant difference in Sex masses for both. Other thing to note is that the IQR for females compared to males is `r 0.07450/0.031` 2.4x for PAL and `r 0.04125/0.016` 2.57 for PAN.
+
+Thus, I conducted a t-test analysis of the mass of PAN and PAL, first species and then sex.
+
+```{r}
+# t-test of mass and Species
+lm_mass_species <- lm(Mass ~ Species, data = flymass_meta)
+summary(lm_mass_species)
+Anova(lm_mass_species)
+```
+
+[**[TABLE]**]{.underline}
+
+A linear model was fitted showing interactive effect between sex and species. Residual standard error was 0.0425 with r2 0.887, with F(3,389) = 1022, p \<0.001.
+
+```{r}
+# t-test of mass and Species
+lm_mass_species <- lm(Mass ~ Species * Sex, data = flymass_meta)
+summary(lm_mass_species)
+Anova(lm_mass_species)
+```
+
+A quasipoisson GLM (z(290) = 6.532, p \< 0.001) was used to test if mass and total acts of aggression were correlated.
+
+```{r}
+glm_total_mass_ag <- glm(total_ag_acts ~ Mass * Species, pan_pal, family = poisson)
+dispersiontest(glm_total_mass_ag, trafo =1)
+summary(glm_total_mass_ag)
+Anova(glm_total_mass_ag)
+```
+
+# Figures
+
+### Boxplot of total aggressive acts counts by temp, sex, species.
+
+```{r plot og total aggressive acts by counting incidence + counts, echo=FALSE, message=FALSE, warning=FALSE}
+# species dif total ag acts
+pan_pal %>% 
+   filter(!is.na(Sex)) %>% 
+  ggplot(aes (x = Species, y = total_ag_acts, fill = Species, colour = Species))+
+    geom_violin(width=0.7, alpha = 0.5, length = 0.8) +
+    geom_boxplot(width=0.1, color="Black", alpha=0.2, show.legend = FALSE,
+                 outlier.colour = "#000000",  outlier.alpha = 1, 
+                 outlier.shape = 8, outlier.size = 2) +
+    scale_fill_manual(values = c("#264653", "#B75688")) + 
+    scale_colour_manual(values = c("#264653", "#B75688")) +
+      xlab("Species") + ylab("Total incidience of aggressive action") +
+   theme_bw() +
+        theme(panel.grid = element_line(color = "gray94"), #grid
+              panel.grid.major.x = element_blank(),
+              text = element_text(size = 12),
+              plot.title = element_text(hjust = 0.5, size = 18),
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 12),
+          legend.background = element_rect(fill="white"),
+          legend.position = c(0.90,0.87))
+
+
+pan_pal %>% 
+   filter(!is.na(Sex)) %>% 
+  ggplot(aes (x = Sex, y = total_ag_acts, fill = Sex, colour = Sex))+
+    geom_violin(width=0.7, alpha = 0.2, length = 0.8) +
+    geom_boxplot(width=0.1, color="Black", alpha=0.6, 
+                 outlier.alpha = 1, outlier.color = "gray30") +
+  facet_wrap(~Species) +
+    scale_color_viridis(discrete = TRUE, option = "D", begin = 0.3, end = 0.7) + 
+    scale_fill_viridis(discrete = TRUE, option = "D", begin = 0.3, end = 0.7) + 
+    labs(title = "Total Number of Aggressive Behaviours") +
+      xlab("Species") + ylab("Total incidience of aggressive action") +
+   theme_bw() +
+        theme(panel.grid = element_line(color = "gray94"), #grid
+              panel.grid.major.x = element_blank(),
+              text = element_text(size = 12),
+              plot.title = element_text(hjust = 0.5, size = 18),
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 12),
+          legend.background = element_rect(fill="white"),
+          legend.position = c(0.92,0.88))
+# move the title text to the middle
+```
+
+### Counts of aggressive behaviour
+
+```{r Counts of aggressive behaviour each species}
+plot_counts_ag_behaviour <- pan_pal %>% 
+  rename("Body Shove" = DurNBodyShove, # relabel so nice
+         "Fencing Bout" = DurNFencing,
+         Headbutt = DurNHeadbutt,
+         "Leg Shove" = DurNLegShove,
+         "Lunge" = DurNLunge,
+         "Wing Threat" = DurNWingThreat) %>% 
+  pivot_longer(c(2, 4:7, 10), names_to = "ag_act", values_to = "Count") %>% 
+  ggplot(aes(y = Count, x = ag_act, fill = Species)) +
+ #     geom_col(position = "dodge", outlier.alpha = 1, outlier.color = "black") +
+      geom_point(pch = 21, position = position_jitterdodge(jitter.height = 0.3, seed = 1),
+               alpha = 1, size = 0.4, show.legend = FALSE, aes(colour = Species)) +
+        geom_boxplot(alpha = 0.8, outlier.colour = "#000000", 
+                     outlier.alpha = 1, outlier.shape = 8, outlier.size = 2) + 
+    scale_fill_manual(values = c("#264653", "#B75688")) + 
+    scale_colour_manual(values = c("#264653", "#B75688")) +
+      labs(title = "Counts of Aggressive Behaviours for PAL and PAN",  
+                  x = "Aggressive Behaviour",
+                  y = "Total count") +
+    scale_y_continuous(breaks = seq(0,25, by = 5)) +
+    theme_masters +
+        theme(panel.grid = element_line(color = "gray94"), #grid
+              panel.grid.major.x = element_blank(),
+          legend.position = c(0.92,0.88))
+plot_counts_ag_behaviour
+```
+
+Separated for each sex.s
+
+```{r Counts of aggressive behaviour each species separated by species, sex}
+plot_counts_ag_behaviour_sex <- pan_pal %>% 
+  rename("Body Shove" = DurNBodyShove, # relabel so nice
+         "Fencing Bout" = DurNFencing,
+         Headbutt = DurNHeadbutt,
+         "Leg Shove" = DurNLegShove,
+         "Lunge" = DurNLunge,
+         "Wing Threat" = DurNWingThreat) %>% 
+  pivot_longer(c(2, 4:7, 10), names_to = "ag_act", values_to = "Count") %>% 
+  ggplot(aes(y = Count, x = ag_act, fill = Sex)) +
+ #     geom_col(position = "dodge", outlier.alpha = 1, outlier.color = "black") +
+      geom_point(pch = 21, position = position_jitterdodge(jitter.height = 0.3, seed = 1),
+               alpha = 1, size = 0.4, show.legend = FALSE, aes(colour = Species)) +
+        geom_boxplot(alpha = 0.8, outlier.colour = "#000000", 
+                     outlier.alpha = 1, outlier.shape = 8, outlier.size = 2) + 
+    scale_color_viridis(discrete = TRUE, option = "D", begin = 0.3, end = 0.7) + 
+    scale_fill_viridis(discrete = TRUE, option = "D", begin = 0.3, end = 0.7) + 
+      labs(title = "Counts of Aggressive Behaviours",  
+                  x = "Aggressive Behaviour",
+                  y = "Total count") +
+  facet_wrap(~Species) +
+    scale_y_continuous(breaks = seq(0,25, by = 5)) +
+    theme_bw() +
+        theme(panel.grid = element_line(color = "gray94"), #grid
+              panel.grid.major.x = element_blank(),
+              text = element_text(size = 12),
+              plot.title = element_text(hjust = 0.5, size = 18),
+          axis.text = element_text(size = 12, angle = 90),
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 12),
+          legend.background = element_rect(fill="white"),
+          legend.position = c(0.92,0.88))
+plot_counts_ag_behaviour_sex
+```
+
+```{r plot of temperature fencing bouts by species}
+plot_temp_bouts <- ggplot(pan_pal, aes(y = DurNFencing, x = Temp, fill = Temp)) +
+  geom_violin(aes(colour = Temp), alpha = 0.7) +
+  geom_boxplot(width = 0.2, colour = "gray30", alpha = 0.8,
+               show.legend = FALSE, outlier.alpha = 0.6, outlier.color = "gray30") + 
+  scale_fill_manual(name="Temperature", 
+                    values = c("#2A9D8F", "#F4A261", "#ef626c")) + 
+  scale_colour_manual(name="Temperature",
+                      values = c("#2A9D8F", "#F4A261", "#ef626c")) + 
+  facet_wrap(~Species) + # Remove to get overall pattern
+  labs(title = "Number of fencing bouts at \ndifferent temperature", 
+         x = "Temperature Treatment",
+         y = "Number of fencing bouts") +
+    scale_x_discrete(breaks=c("L", "M", "H"),
+                      labels=c("Low\n21C", "Medium\n25C", "High\n30C")) +
+  # scale breaks
+ ylim(0,24) +
+   # scale_y_continuous(breaks = seq(0,30, by = 5)) +
+      theme_bw() +
+      theme( text = element_text(size = 12),
+              plot.title = element_text(hjust = 0.5, size = 18),
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 12), 
+              legend.position = "bottom",
+            panel.grid = element_line(color = "gray94"), #grid
+              panel.grid.major.x = element_blank(),
+             strip.background = element_blank(),
+          strip.text = element_text(size=11, face="bold"))
+plot_temp_bouts
+```
+
+### Total number of wins per species
+
+```{r boxplot of pooled total number of wins per species or the cursed one}
+wins_label <-  winners_losers %>% 
+  group_by(Species) %>% 
+  summarise(wins = sum(wins))
+  
+plot_cursed_wins <- ggplot(winners_losers, aes(y = wins, colour = Species)) + 
+  geom_boxplot(orientation = "x", aes(fill = Species), alpha = 0.3,
+               width = 0.3) +
+      scale_fill_manual(values = c("#264653", "#B75688")) + 
+    scale_colour_manual(values = c("#264653", "#B75688")) +
+    labs(title = "Total Wins per Species") + 
+  xlab("Number of Wins") + ylab("Species") +
+  ylim(0,13) +
+  theme_bw() +
+      theme(axis.text.x = element_blank(),
+            panel.grid = element_line(color = "gray94"), #grid
+              panel.grid.major.x = element_blank(),
+        axis.ticks.x = element_blank(), 
+          plot.title = element_text(hjust = 0.5, size = 18),
+          axis.title = element_text(size = 16),
+        text = element_text(size = 12),
+          legend.text = element_text(size = 11),
+          legend.background = element_rect(fill="white"),
+          legend.position = c(0.8,0.85))
+plot_cursed_wins
+```
+
+### Proportion of win, loss, draws.
+
+This one is actually wrong in the thesis but not quite sure how.
+
+```{r warning = false, message = false}
+prop_perc <- winners_losers %>%
+  group_by(Species, Sex) %>% 
+  filter(Species == "PAL") %>% 
+      dplyr::summarise(win = sum(wins)/sum(bouts),
+                       loss = sum(loses)/sum(bouts),
+                       draw = sum(draws)/sum(bouts)) %>% 
+      pivot_longer(c(win,loss,draw), names_to = "outcome", values_to = "percent")
+
+  # THE GRAPH
+  ggplot(prop_perc, aes(y = Sex, x = percent, fill = outcome)) + 
+  geom_col(position = "fill", colour = "#264653") +
+    scale_fill_manual(name="Fight Outcome", 
+                    values = c("#F4A261", "#ef626c", "#2A9D8F"))+ 
+    labs(title = "Outcome of Fencing Bouts",
+         x = "Percentage (%)",
+           y = "Sex") +
+    scale_x_continuous(labels = scales::percent) +
+    scale_y_discrete(breaks=c("F", "M"),
+                      labels=c("Females", "Males")) +
+      theme_classic() +
+      theme(panel.grid = element_blank(), #grid
+        axis.ticks.y = element_blank(), 
+        axis.text.y = element_text(size = 13, face = "bold"),
+                axis.text.x = element_text(size = 12),
+          plot.title = element_text(hjust = 0.5, size = 18),
+          axis.title = element_text(size = 16, margin = margin(2,2,2,2, unit = "cm")),
+          text = element_text(size = 12),
+          legend.title = element_text(size = 12, face = "bold"),
+          legend.text = element_text(size = 11),
+          legend.background = element_rect(fill="white"),
+          legend.position = "top"
+          )
+```
+
+Table for labels - from PAL persepective
+
+```{r echo=FALSE}
+kable(prop_perc[2:4], col.names = c("Sex", "Outcome", "Proportion"))
+```
+
+### Species Mass
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot_massdistribution <- flymass_meta %>% 
+  unite(SpeciesSex, Species, Sex, sep = "_", remove = FALSE, na.rm = TRUE) %>%   
+              # not the most elegant way of doing this
+  ggplot(aes(x = Mass, fill = SpeciesSex, colour = SpeciesSex, na.rm = TRUE)) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(name="Species and Sex", 
+                      labels = c("PAL Females", "PAL Males", "PAN Females", "PAN Males"),
+                    values = c("#F4A261", "#ef626c", "#2A9D8F", "#4E2966")) + #264653")) +
+  scale_colour_manual(name="Species and Sex",
+                      labels = c("PAL Females", "PAL Males", "PAN Females", "PAN Males"),
+                      values = c("#F4A261", "#ef626c", "#2A9D8F", "#4E2966")) + #264653")) +
+    labs(title = "Distribution of PAN and PAL Mass (mg)",
+         x ="Mass (mg)", 
+         y = "Proportion") + 
+  ylim(0,35) + 
+      scale_x_continuous(breaks = seq(0,0.7, by = 0.05)) +
+  theme_bw() +
+  theme(legend.position = c(0.8,0.8),
+        plot.title = element_text(hjust = 0.5, size = 18),
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 16),
+          legend.text = element_text(size = 12),
+        legend.background = element_rect(fill="white")
+  )
+plot_massdistribution
+```
