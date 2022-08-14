@@ -9,26 +9,14 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-<<<<<<< HEAD
-knitr::opts_chunk$set(echo = TRUE)
-=======
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
                       fig.align = 'centre', output.width = '70%', output.height = '50%')
 # PACKAGES
->>>>>>> 05e91b1 (Final versions)
 library(tidyverse)
 
 #Stats
 library(AER) # dispersion test
 library(car) # Anova, masked ‘package:dplyr’:recode ‘package:purrr’: some
-<<<<<<< HEAD
-
-# output
-library(knitr) #kable function
-```
-
-**Please run the script/file "Data Tidying" to generate all the data sets required for this analysis to run.**
-=======
 library(multcomp) # glht function line 203
 
 # output
@@ -66,8 +54,6 @@ pan_pal$Temp <- factor(pan_pal$Temp, levels =  temp_levels)
 winners_losers$Temp <- factor(winners_losers$Temp, levels =  temp_levels)
 winners_losers_pair$Temp <- factor(winners_losers_pair$Temp, levels =  temp_levels)
 ```
-
->>>>>>> 05e91b1 (Final versions)
 
 # Statistical analysis methodology
 
@@ -148,24 +134,20 @@ Anova(glm_species_taa_int, type = 3)
 
 
 
-<<<<<<< HEAD
+
 ## Whats the most frequent agonistic behaviour?
-=======
+
 ## What is the most frequent agonistic behaviour?
->>>>>>> 05e91b1 (Final versions)
 
 As total aggressive acts are significantly different between species, break it down to see what kind of agnostic behaviours vary between the species. Is there any evidence that flies express some behaviours more frequently than others? Does it vary between species?
 
 ```{r}
-<<<<<<< HEAD
-=======
 pan_pal_ag <- pan_pal %>% 
   pivot_longer(c(2, 4:7, 10), names_to = "ag_act", values_to = "Count") %>% 
  dplyr::select(Fly_Number, file_name, Letter, Sex, Temp, Species, 
         DurTTMoving, DurTTFeed, DurTTFencing,
          Mass, mass_dif, total_ag_acts, ag_act, Count) 
 
->>>>>>> 05e91b1 (Final versions)
 glm_species_ag_acts <- glm(Count ~ Species * ag_act, pan_pal_ag, 
                            family = poisson())
 summary(glm_species_ag_acts)
@@ -239,11 +221,7 @@ As the only significant factor was a main effect of temperature, a post-hoc Tuke
 
 ```{r}
 glm_three_fc_ph <- glm(DurNFencing ~ Temp + Sex + Species, pan_pal, family = quasipoisson()) # no interaction thus add
-<<<<<<< HEAD
-summary(glht(glm_three_fc_ph, mcp(Temp = "Tukey")))
-=======
 summary(glht(glm_three_fc_ph, mcp(Temp = "Tukey"))) #multcomp package
->>>>>>> 05e91b1 (Final versions)
 ```
 
 Post hoc test to see temperatures (add species and sex as no interaction), showed that M-L were significantly different (est = - 0.4586, z = -3.392, p = 0.00212) and H-L were sig different (est- -0.7276, z = -4.746, p \< 0.001). But that High medium difference was not significant (z = -1.655, p = 0.22141). With low having the highest number of bouts, then medium then high temperature.
@@ -358,11 +336,7 @@ Following this, out of the resolved bouts, the proportion of PAL wins did not si
 
 *PAL were significantly larger than PAN in terms of dry body mass (F(1,389)value = 1695.21, p < 0. 001). Male and female body mass was significantly different (F(1,389) =839.75, p <0.001) and there was a significant interactive effect between sex and species (F(1,389) =150.62, p <0.001). Modelling body mass, species and sex accounted for 88.74% of the variation in body mass (r2 = 0.8874, F(3,389) =1022, p < 0.001). On average, males were significantly smaller than females. Females had a larger range in body mass compared to males – 2.4 times for PAL and 2.57 times for PAN (table 3). Mass was significantly positively correlated with total aggressive acts (X2(1,290) = 4.806, p = 0.0284). Larger individuals fought more than smaller individuals.*
 
-<<<<<<< HEAD
 ```{r echo=FALSE, warning = FALSE, message = FALSE}
-plot_massdistribution
-=======
-```{r echo=FALSE, message=FALSE, warning=FALSE}
 flymass_meta %>% 
   unite(SpeciesSex, Species, Sex, sep = "_", remove = FALSE, na.rm = TRUE) %>%   
               # not the most elegant way of doing this
@@ -387,7 +361,6 @@ flymass_meta %>%
           legend.text = element_text(size = 12),
         legend.background = element_rect(fill="white")
   )
->>>>>>> 05e91b1 (Final versions)
 ```
 
 > **TDLR**: Males and females signifcantly differ in dry mass for both species. Female mass variance is \> than male.
@@ -466,17 +439,12 @@ pan_pal %>%
           legend.text = element_text(size = 12),
           legend.background = element_rect(fill="white"),
           legend.position = c(0.90,0.87))
-<<<<<<< HEAD
-
-
-=======
 ```
 
 seperated by sex and species
 
 ```{r plot og total aggressive acts sep sex species, echo=FALSE, message=FALSE, warning=FALSE}
 library(viridis)
->>>>>>> 05e91b1 (Final versions)
 pan_pal %>% 
    filter(!is.na(Sex)) %>% 
   ggplot(aes (x = Sex, y = total_ag_acts, fill = Sex, colour = Sex))+
@@ -633,11 +601,7 @@ plot_cursed_wins
 
 This one is actually wrong in the thesis but not quite sure how.
 
-<<<<<<< HEAD
-```{r warning = false, message = false}
-=======
-```{r set up}
->>>>>>> 05e91b1 (Final versions)
+```{r graph, warning = false, message = false}
 prop_perc <- winners_losers %>%
   group_by(Species, Sex) %>% 
   filter(Species == "PAL") %>% 
@@ -645,16 +609,13 @@ prop_perc <- winners_losers %>%
                        loss = sum(loses)/sum(bouts),
                        draw = sum(draws)/sum(bouts)) %>% 
       pivot_longer(c(win,loss,draw), names_to = "outcome", values_to = "percent")
-<<<<<<< HEAD
 
   # THE GRAPH
-=======
 ```
 
 
 ```{r graph, warning = FALSE, message = FALSE}
 # THE GRAPH
->>>>>>> 05e91b1 (Final versions)
   ggplot(prop_perc, aes(y = Sex, x = percent, fill = outcome)) + 
   geom_col(position = "fill", colour = "#264653") +
     scale_fill_manual(name="Fight Outcome", 
