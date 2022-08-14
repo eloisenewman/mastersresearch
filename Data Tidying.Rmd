@@ -9,12 +9,11 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, true = FALSE)
 library(tidyverse)
 ```
 
 Data tidying of raw data for "Hot and Bothered" masters research. R version is `r R.Version()$version.string`. Data wrangling involves mainly using the `dplyr` package from `tidyverse` by Hadley Wickham, Romain François, Lionel Henry and Kirill Müller (2022).
-
 
 # Three raw data sets
 
@@ -219,7 +218,7 @@ selectbehaviour <- behaviours %>%
 Using `readr` package from `tidyverse` to export as a tidied data file.
 
 ```{r exporting tidied fly behaviour data to csv, include=TRUE}
-write_excel_csv(selectbehaviour, "behavioural_data_tidied.csv", col_names = TRUE)
+write_excel_csv(selectbehaviour, "tidy_data/behavioural_data_tidied.csv", col_names = TRUE)
 ```
 
 # Combining data sets
@@ -419,15 +418,17 @@ And this code has generated:
 
 1.  `behaviour_mass_meta` - each row is one fight with behaviour, mass and metadata for PAN and PAL in one row.
 
-2.  `pan_pal` - each row for each fly, including total ag_acts and presence of fencing.
+2.  `flymass_meta` - mass and metadata where each row is a fly.
+
+3.  `pan_pal` - each row for each fly, including total ag_acts and presence of fencing.
 
     1.  `pan_pal_ag` - each row for each type of ag_act, so 6 rows for each fly.
 
-3.  `selectbehaviour` - tidied full dataset with selected behaviours.
+4.  `selectbehaviour` - tidied full dataset with selected behaviours.
 
-4.  `meta_data2` - tidied metadata
+5.  `meta_data2` - tidied metadata
 
-5.  `winners_losers` - has win, loss, draw for each fly separately
+6.  `winners_losers` - has win, loss, draw for each fly separately
 
     1.  `winners_losers_pair` - has wins,losses, draws for each fight and species one row. aka paired
 
@@ -437,11 +438,20 @@ And this code has generated:
 
     4.  `winners_losers_bout_removed` - dataset removing fights with no bouts recorded.
 
-# Themes
+For the analysis, some of these datasets are required. Either run the script above to have them in your environment. The code below places copies in the data folder.
+
+```{r exporting csv files for analysis}
+write_csv(pan_pal, "tidy_data/pan_pal.csv", col_names = TRUE)
+write_csv(flymass_meta, "tidy_data/flymass_meta.csv", col_names = TRUE)
+write_csv(winners_losers, "tidy_data/winners_losers.csv", col_names = TRUE)
+write_csv(winners_losers_pair, "tidy_data/winners_losers_pair.csv", col_names = TRUE)
+```
+
+# Colours and theme
 
 ## Colour scheme
 
-```{r}
+```{r masters colour scheme hex codes}
 masters_colours <- c("#264653", #Charcoal - colour used for PAL
                      "#2a9d8f", #Persian Green  - win or low temp
                      "#e9c46a", #Maize Crayola
@@ -455,7 +465,7 @@ masters_colours <- c("#264653", #Charcoal - colour used for PAL
 
 Theme setting for graphs used in ggplot2 - just use + and theme_masters.
 
-```{r Creating theme}
+```{r Creating theme for masters}
 theme_masters <- theme_bw() + theme( 
    plot.title = element_text(hjust = 0.5, size = 18),
    text = element_text(size = 12),
